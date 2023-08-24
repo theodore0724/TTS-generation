@@ -1,0 +1,29 @@
+# Ignore Python bytecode
+__pycache__
+
+# Ignore settings
+config.json
+.env
+
+# Ignore generated files
+outputs/
+favorites/
+voices/
+collections/
+
+# Ignore model checkpoints
+data/
+
+# Ignore temporary files
+temp/
+
+# Ignore node modules
+node_modules/
+
+# Editors
+.vscode/
+.idea/
+.sourcery.yaml
+
+# Ignore temporary Jupiter notebooks
+*.temp.ipynb
