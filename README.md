@@ -1,6 +1,6 @@
-# TTS Generation WebUI (Bark)
+# TTS Generation WebUI (Bark v2, Tortoise)
 
-This code provides a Gradio interface for generating audio from text input using the Bark TTS model. The interface takes a text prompt as input and generates audio as output.
+This code provides a Gradio interface for generating audio from text input using the Bark TTS and Tortoise TTS models. The interface takes a text prompt as input and generates audio as output.
 
 ## Dependencies
 
