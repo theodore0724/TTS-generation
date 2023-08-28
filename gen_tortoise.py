@@ -12,17 +12,17 @@ from models.tortoise.tortoise.utils.audio import load_voices
 
 SAMPLE_RATE = 24_000
 
+OUTPUT_PATH='outputs/'
 
 def generate_tortoise(text="The expressiveness of autoregressive transformers is literally nuts! I absolutely adore them.",
                       voice='random',
                       preset='fast',
-                      output_path='results/',
                       model_dir=MODELS_DIR,
                       candidates=3,
                       seed=None,
                       cvvp_amount=.0):
 
-    os.makedirs(output_path, exist_ok=True)
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
 
     tts = TextToSpeech(models_dir=model_dir)
 
@@ -43,48 +43,51 @@ def generate_tortoise(text="The expressiveness of autoregressive transformers is
 
     if isinstance(gen, list):
         for j, g in enumerate(gen):
-            filename = os.path.join(output_path, f'{voice}_{j}.wav')
-            torchaudio.save(filename, g.squeeze(0).cpu(), SAMPLE_RATE)
-            filenames.append(filename)
+            process_gen(text, voice, preset, candidates, seed, cvvp_amount, filenames, g, j)
     else:
-        audio_tensor = gen.squeeze(0).cpu()
-
-        model = "tortoise"
-        date = get_date()
-
-        base_filename = create_base_filename(voice, output_path, model, date)
-        filename = f'{base_filename}.wav'
-        torchaudio.save(filename, audio_tensor, SAMPLE_RATE)
-        audio_array = audio_tensor.t().numpy()
-        # Plot the waveform using matplotlib
-        filename_png = f'{base_filename}.png'
-        save_waveform_plot(audio_array, filename_png)
-
-        filename_json = f'{base_filename}.json'
-
-        metadata = {
-            "text": text,
-            "voice": voice,
-            "preset": preset,
-            "candidates": candidates,
-            "seed": seed,
-            "cvvp_amount": cvvp_amount,
-            "filename": filename,
-            "filename_png": filename_png,
-            "filename_json": filename_json,
-        }
-        import json
-        with open(filename_json, 'w') as f:
-            json.dump(metadata, f)
-
-        filenames.extend((filename, filename_png))
+        process_gen(text, voice, preset, candidates, seed, cvvp_amount, filenames, gen)
     return filenames
 
-def generate_tortoise_(prompt):
-    return generate_tortoise(text=prompt,
-                             voice="random",
-                             output_path="outputs/",
-                             preset="ultra_fast",
-                             candidates=1,
-                             cvvp_amount=.0)
+ef process_gen(text, voice, preset, candidates, seed, cvvp_amount, filenames, gen, j = 0):
+    audio_tensor = gen.squeeze(0).cpu()
 
+    model = "tortoise"
+    date = get_date()
+
+    base_filename = f"{create_base_filename(voice, OUTPUT_PATH, model, date)}__n{j}"
+    filename = f'{base_filename}.wav'
+    torchaudio.save(filename, audio_tensor, SAMPLE_RATE)
+    audio_array = audio_tensor.t().numpy()
+    filename_png = f'{base_filename}.png'
+    save_waveform_plot(audio_array, filename_png)
+
+    filename_json = f'{base_filename}.json'
+
+    metadata = {
+        "text": text,
+        "voice": voice,
+        "preset": preset,
+        "candidates": candidates,
+        "seed": seed,
+        "cvvp_amount": cvvp_amount,
+        "filename": filename,
+        "filename_png": filename_png,
+        "filename_json": filename_json,
+    }
+    
+    import json
+    with open(filename_json, 'w') as f:
+        json.dump(metadata, f)
+
+    filenames.extend((filename, filename_png))
+
+def generate_tortoise_n(n):
+    def gen(prompt, voice="random", preset="ultra_fast", seed=None, cvvp_amount=.0):
+        return generate_tortoise(text=prompt,
+                        voice=voice,
+                        preset=preset,
+                        candidates=n,
+                        seed=seed if seed != "None" else None,
+                        cvvp_amount=cvvp_amount,
+                        )
+    return gen
