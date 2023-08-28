@@ -11,10 +11,9 @@ from settings_tab import settings_tab
 
 from setup_or_recover import setup_or_recover
 
-
+setup_or_recover.dummy()
 dotenv_init.init()
 matplotlib.use('agg')
-setup_or_recover()
 
 def save_config(text_use_gpu,
                 text_use_small,
