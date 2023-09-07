@@ -1,11 +1,11 @@
 import os
 import time
+import src.dotenv_init as dotenv_init
 from config import config
 from src.history_tab.history_css import history_css
-from src.load_config import load_config
+from src.load_config import default_config
 from settings_tab_gradio import settings_tab_gradio
 import src.setup_or_recover as setup_or_recover
-import src.dotenv_init as dotenv_init
 import matplotlib
 import matplotlib.pyplot as plt
 from src.bark_tab.generation_tab_bark import generation_tab_bark, bark_css
@@ -112,7 +112,7 @@ def reload_config_and_restart_ui():
     # time.sleep(1)
     # demo.launch(**gradio_interface_options)
 
-gradio_interface_options = config["gradio_interface_options"] if "gradio_interface_options" in config else {}
+gradio_interface_options = config["gradio_interface_options"] if "gradio_interface_options" in config else default_config
 
 
 
