@@ -1,5 +1,3 @@
-# Clone one of bark model forks within this directory
 git clone https://github.com/theodore0724/bark.git bark
-
-# Clone one of tortoise model forks within this directory
 git clone https://github.com/theodore0724/tortoise-tts.git tortoise
+git clone https://github.com/theodore0724/bark-voice-cloning-HuBERT-quantizer bark_voice_cloning_hubert_quantizer
