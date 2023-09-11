@@ -1,91 +1,140 @@
 import os
-import time
 import gradio as gr
 
-
-import glob
 import json
 import shutil
-
-import numpy as np
-from .delete_generation_cb import delete_generation_cb
-from .parse_time import extract_time, parse_time
-from .save_to_favorites import save_to_favorites
-from .open_folder import open_folder
-
-
-def open_outputs_folder(): open_folder("outputs")
-def open_favorites_folder(): open_folder("favorites")
-
-
-def get_wav_files(directory):
-    wav_files = glob.glob(f"{directory}/*.wav")
-    return [[file, parse_time(extract_time(file))] for file in wav_files]
+from src.history_tab.collections_directories_atom import (
+    collections_directories_atom,
+    get_collections,
+)
+from src.history_tab.get_wav_files import (
+    get_wav_files,
+    get_wav_files_img,
+)
+from src.history_tab.delete_generation_cb import delete_generation_cb
+from src.history_tab.save_to_favorites import save_to_collection, save_to_favorites
+from src.history_tab.open_folder import open_folder
 
 
-def get_wav_files_history(): return get_wav_files("outputs")
-def get_wav_files_favorites(): return get_wav_files("favorites")
+def _get_row_index(evt: gr.SelectData):
+    index: int | tuple[int, int] = evt.index
+    return index[0] if isinstance(index, (list, tuple)) else index
 
 
-def get_npz_files_voices():
-    npz_files = glob.glob("voices/*.npz")
-    return [[file] for file in npz_files]
+def _get_filename(table, index):
+    return table["data"][index][-1]
 
 
-def select_audio(table, evt):
-    index = evt.index
-    filename = table['data'][index[0]][0]
+def _select_audio(table, evt: gr.SelectData):
+    index = _get_row_index(evt)
+    filename = _get_filename(table, index)
     with open(filename.replace(".wav", ".json")) as f:
         json_text = json.load(f)
     return filename, json_text
 
 
-def clear_audio(): return [
-    gr.Audio.update(value=None, label=""),
-    gr.Image.update(value=None),
-    gr.JSON.update(value=None),
-    gr.Button.update(visible=False),
-]
+def clear_audio():
+    return [
+        gr.Audio.update(value=None),
+        gr.Image.update(value=None),
+        gr.JSON.update(value=None),
+        gr.Button.update(visible=False),
+    ]
 
-def save_to_voices_cb(json_text):
-    shutil.copy(json_text["filename_npz"], "voices/")
+
+def save_to_voices_cb(npz_filename: str):
+    shutil.copy(npz_filename, "voices/")
     return gr.Button.update(value="Saved")
 
-def history_tab(register_use_as_history_button):
-    with gr.Tab("History") as history_tab, gr.Row():
+
+def history_tab(
+    register_use_as_history_button, directory="outputs", show_collections=False
+):
+    with gr.Tab(
+        show_collections and "Collections" or directory.capitalize()
+    ) as history_tab:
+        return history_content(
+            register_use_as_history_button, directory, history_tab, show_collections
+        )
+
+
+def history_content(
+    register_use_as_history_button, directory, history_tab, show_collections
+):
+    directories = get_collections()
+    directory_dropdown = gr.Dropdown(
+        value=directory,
+        choices=directories,
+        label="Select directory of the collection",
+        visible=show_collections,
+    )
+    collections_directories_atom.change(
+        fn=lambda x: gr.Dropdown.update(choices=x),
+        inputs=[collections_directories_atom],
+        outputs=[directory_dropdown],
+    )
+
+    if show_collections:
+        create_collection_ui(collections_directories_atom)
+
+    with gr.Accordion("Gallery Selector (Click to Open)", open=False):
+        history_list_as_gallery = gr.Gallery(value=[], columns=8, object_fit="contain", height="auto")
+    with gr.Row():
         with gr.Column():
             with gr.Row():
-                button_output = gr.Button(value="Open outputs folder")
-            button_output.click(open_outputs_folder)
+                button_output = gr.Button(
+                    value=f"Open {show_collections and 'collection' or directory} folder"
+                )
+            button_output.click(lambda x: open_folder(x), inputs=[directory_dropdown])
 
-            history_list = gr.Dataframe(value=get_wav_files_history(),
-                                        elem_classes="file-list",
-                                        type="array",
-                                        interactive=False,
-                                        col_count=2,
-                                        max_cols=2,
-                                        datatype=["str", "date"],
-                                        headers=["History", "Date and time"])
+            datatypes = ["date", "str", "str", "str"]
+            # headers = ["Date and Time", directory.capitalize(), "When", "Filename"]
+            headers = ["Date and Time", "Name", "When", "Filename"]
+
+            history_list = gr.Dataframe(
+                value=[],
+                elem_classes="file-list",
+                type="array",
+                interactive=False,
+                col_count=len(datatypes),
+                max_cols=len(datatypes),
+                datatype=datatypes,
+                headers=headers,
+            )
 
         with gr.Column():
-            history_audio = gr.Audio(
-                visible=True, type="filepath", label="History")
-            history_image = gr.Image()
+            history_bundle_name = gr.Markdown(visible=True)
+            history_bundle_name_data = gr.State()  # type: ignore
+            history_audio = gr.Audio(visible=True, type="filepath", show_label=False)
+            history_image = gr.Image(show_label=False)
             history_json = gr.JSON()
             history_npz = gr.Textbox(visible=False)
 
             with gr.Row():
                 delete_from_history = gr.Button(
-                    value="Delete", variant="stop", visible=False)
+                    value="Delete", variant="stop", visible=False
+                )
                 save_to_favorites_history = gr.Button(
-                    value="Save to favorites", variant="primary", visible=False)
+                    value="Save to favorites", variant="primary", visible=False
+                )
                 use_as_voice = gr.Button(
-                    value="Use as voice", variant="secondary", visible=False)
+                    value="Use as voice",
+                    variant=directory == "favorites" and "primary" or "secondary",
+                    visible=False,
+                )
                 save_to_voices = gr.Button(
-                    value="Save to voices", variant="secondary", visible=False)
+                    value="Save to voices", variant="secondary", visible=False
+                )
+                open_folder_button = gr.Button(
+                    value="Open folder", variant="secondary", visible=False
+                )
+                open_folder_button.click(open_folder, inputs=history_bundle_name_data)
 
                 save_to_favorites_history.click(
-                    fn=save_to_favorites, inputs=history_json, outputs=save_to_favorites_history)
+                    fn=save_to_favorites,
+                    inputs=history_bundle_name_data,
+                    outputs=save_to_favorites_history,
+                )
 
                 register_use_as_history_button(
                     use_as_voice,
@@ -93,174 +142,139 @@ def history_tab(register_use_as_history_button):
                 )
 
                 save_to_voices.click(
-                    fn=save_to_voices_cb, inputs=history_json, outputs=save_to_voices)
-
-        def select_audio_history(table, evt: gr.SelectData):
-            filename, json_text = select_audio(table, evt)
-            return {
-                history_audio: gr.Audio.update(value=filename, label=filename),
-                history_image: gr.Image.update(value=filename.replace(".wav", ".png")),
-                history_json: gr.JSON.update(value=json_text),
-                history_npz: gr.Textbox.update(value=filename.replace(".wav", ".npz")),
-                delete_from_history: gr.Button.update(visible=True),
-                save_to_favorites_history: gr.Button.update(visible=True, value="Save to favorites"),
-                use_as_voice: gr.Button.update(visible=True, value="Use as voice"),
-                save_to_voices: gr.Button.update(visible=True, value="Save to voices"),
-            }
-
-        history_list.select(fn=select_audio_history, inputs=[history_list], outputs=[
-                            history_audio,
-                            history_image,
-                            history_json,
-                            history_npz,
-                            delete_from_history,
-                            save_to_favorites_history,
-                            use_as_voice,
-                            save_to_voices
-                            ], preprocess=False)
-
-        def update_history_tab():
-            return gr.Dataframe.update(value=get_wav_files_history())
-
-        delete_from_history.click(fn=clear_audio, outputs=[
-                                  history_audio, history_image, history_json, delete_from_history])
-        delete_from_history.click(fn=delete_generation_cb(
-            update_history_tab), inputs=history_json, outputs=[history_list])
-        history_tab.select(fn=update_history_tab, outputs=[history_list])
-
-
-def favorites_tab(register_use_as_history_button):
-    with gr.Tab("Favorites") as favorites_tab, gr.Row():
-        with gr.Column():
-            with gr.Row():
-                button_output = gr.Button(value="Open favorites folder")
-            button_output.click(open_favorites_folder)
-            favorites_list = gr.Dataframe(value=get_wav_files_favorites(),
-                                          elem_classes="file-list",
-                                          type="array",
-                                          interactive=False,
-                                          col_count=2,
-                                          max_cols=2,
-                                          datatype=["str", "date"],
-                                          headers=["Favorites", "Date and time"])
-
-        with gr.Column():
-            favorites_audio = gr.Audio(
-                visible=True, type="filepath", label="Favorites")
-            favorites_image = gr.Image()
-            favorites_json = gr.JSON()
-            favorites_npz = gr.Textbox(visible=False)
-
-            with gr.Row():
-                delete_from_favorites = gr.Button(
-                    value="Delete", variant="stop", visible=False)
-                use_as_voice = gr.Button(
-                    value="Use as voice", variant="primary", visible=False)
-                save_to_voices = gr.Button(
-                    value="Save to voices", variant="secondary", visible=False)
-
-                register_use_as_history_button(
-                    use_as_voice,
-                    favorites_npz,
+                    fn=save_to_voices_cb, inputs=history_npz, outputs=save_to_voices
                 )
 
-                save_to_voices.click(
-                    fn=save_to_voices_cb, inputs=favorites_json, outputs=save_to_voices)
-
-        def select_audio_favorites(table, evt: gr.SelectData):
-            filename, json_text = select_audio(table, evt)
-            return {
-                favorites_audio: gr.Audio.update(value=filename, label=filename),
-                favorites_image: gr.Image.update(value=filename.replace(".wav", ".png")),
-                favorites_json: gr.JSON.update(value=json_text),
-                favorites_npz: gr.Textbox.update(value=filename.replace(".wav", ".npz")),
-                delete_from_favorites: gr.Button.update(visible=True),
-                use_as_voice: gr.Button.update(visible=True, value="Use as voice"),
-                save_to_voices: gr.Button.update(visible=True, value="Save to voices"),
-            }
-
-        favorites_list.select(fn=select_audio_favorites, inputs=[favorites_list], outputs=[
-            favorites_audio,
-            favorites_image,
-            favorites_json,
-            favorites_npz,
-            delete_from_favorites,
-            use_as_voice,
-            save_to_voices,
-        ], preprocess=False)
-
-        def update_favorites_tab():
-            return gr.Dataframe.update(value=get_wav_files_favorites())
-
-        delete_from_favorites.click(fn=clear_audio, outputs=[
-                                    favorites_audio, favorites_image, favorites_json, delete_from_favorites])
-        delete_from_favorites.click(fn=delete_generation_cb(
-            update_favorites_tab), inputs=favorites_json, outputs=[favorites_list])
-        favorites_tab.select(fn=update_favorites_tab, outputs=[favorites_list])
-
-
-def open_voices_folder():
-    open_folder("voices")
-
-
-def voices_tab(register_use_as_history_button):
-    with gr.Tab("Voices") as voices_tab, gr.Row():
-
-        with gr.Column():
-            with gr.Row():
-                button_output = gr.Button(value="Open voices folder")
-            button_output.click(open_voices_folder)
-
-            voices_list = gr.List(value=get_npz_files_voices(),
-                                    max_cols=1,
-                                    interactive=False,
-                                    datatype=["str"],   
-                                    headers=["Voices"],
-                                    #  elem_classes="file-list"
-                                    )
-        with gr.Column():
-            voice_file_name = gr.Textbox(label="Voice file name", value="")
-            new_voice_file_name = gr.Textbox(label="New voice file name", value="")
-
-            with gr.Row():
-                delete_voice_button = gr.Button(value="Delete voice", variant="stop")
-                use_voice_button = gr.Button(value="Use voice", variant="primary")
-                rename_voice_button = gr.Button(value="Rename voice")
-
-            def delete_voice(voice_file_name):
-                os.remove(voice_file_name)
-                return {
-                    delete_voice_button: gr.Button.update(value="Deleted"),
-                    voices_list: update_voices_tab(),
-                }
-
-            def rename_voice(voice_file_name, new_voice_file_name):
-                shutil.move(voice_file_name, new_voice_file_name)
-                return {
-                    rename_voice_button: gr.Button.update(value="Renamed"),
-                    voices_list: update_voices_tab(),
-                }
-
-            rename_voice_button.click(fn=rename_voice, inputs=[voice_file_name, new_voice_file_name], outputs=[rename_voice_button, voices_list])
-            register_use_as_history_button(
-                use_voice_button,
-                voice_file_name,
+            save_to_collection_ui(
+                directory,
+                directories,
+                history_bundle_name_data,
+                collections_directories_atom,
             )
-            delete_voice_button.click(fn=delete_voice, inputs=[voice_file_name], outputs=[delete_voice_button, voices_list])
 
-            def select(list_data, evt: gr.SelectData):
-                filename = evt.value
-                return {
-                    voice_file_name: gr.Textbox.update(value=filename),
-                    new_voice_file_name: gr.Textbox.update(value=filename),
-                }
+    def _select_audio_history(filename: str, json_text):
+        return {
+            history_bundle_name: gr.Textbox.update(value=os.path.dirname(filename)),
+            history_bundle_name_data: os.path.dirname(filename),
+            history_audio: gr.Audio.update(value=filename, label=filename),
+            history_image: gr.Image.update(value=filename.replace(".wav", ".png")),
+            history_json: gr.JSON.update(value=json_text),
+            history_npz: gr.Textbox.update(value=filename.replace(".wav", ".npz")),
+            delete_from_history: gr.Button.update(visible=True),
+            save_to_favorites_history: gr.Button.update(
+                visible=directory != "favorites", value="Save to favorites"
+            ),
+            use_as_voice: gr.Button.update(visible=True, value="Use as voice"),
+            save_to_voices: gr.Button.update(visible=True, value="Save to voices"),
+            open_folder_button: gr.Button.update(visible=True),
+        }
 
-            voices_list.select(fn=select, inputs=[voices_list], outputs=[
-                                voice_file_name,
-                                new_voice_file_name,
-                                ])
+    def select_audio_history(table, evt: gr.SelectData):
+        return _select_audio_history(*_select_audio(table, evt))
 
-            def update_voices_tab():
-                return gr.List.update(value=get_npz_files_voices())
+    def select_audio_history2(_list, evt: gr.SelectData, table):
+        return _select_audio_history(*_select_audio(table, evt))
 
-            voices_tab.select(fn=update_voices_tab, outputs=[voices_list])
+    outputs = [
+        history_bundle_name,
+        history_bundle_name_data,
+        history_audio,
+        history_image,
+        history_json,
+        history_npz,
+        delete_from_history,
+        save_to_favorites_history,
+        use_as_voice,
+        save_to_voices,
+        open_folder_button,
+    ]
+
+    history_list.select(
+        fn=select_audio_history,
+        inputs=[history_list],
+        outputs=outputs,
+        preprocess=False,
+    )
+
+    history_list_as_gallery.select(
+        fn=select_audio_history2,
+        inputs=[history_list_as_gallery, history_list],
+        outputs=outputs,
+        preprocess=False,
+    )
+
+    def update_history_tab(directory: str):
+        return [
+            gr.Dataframe.update(value=get_wav_files(directory)),
+            gr.Gallery.update(value=get_wav_files_img(directory)),
+        ]
+
+    delete_from_history.click(
+        fn=clear_audio,
+        outputs=[history_audio, history_image, history_json, delete_from_history],
+    )
+    delete_from_history.click(
+        fn=delete_generation_cb(update_history_tab),
+        inputs=[history_bundle_name_data, directory_dropdown],
+        outputs=[history_list, history_list_as_gallery],
+    )
+    history_tab.select(
+        fn=update_history_tab,
+        inputs=[directory_dropdown],
+        outputs=[history_list, history_list_as_gallery],
+    )
+
+    directory_dropdown.change(
+        fn=update_history_tab,
+        inputs=[directory_dropdown],
+        outputs=[history_list, history_list_as_gallery],
+    )
+
+
+def save_to_collection_ui(
+    directory: str,
+    directories: list[str],
+    history_bundle_name_data: gr.State,
+    directories_state: gr.JSON,
+):
+    with gr.Row():
+        move_to_collection = gr.Dropdown(
+            label="Save to collection",
+            choices=directories,
+            value=directory,
+        )
+
+    move_to_collection.select(
+        fn=save_to_collection,
+        inputs=[history_bundle_name_data, move_to_collection],
+        outputs=[move_to_collection],
+    )
+
+    directories_state.change(
+        fn=lambda x: gr.Dropdown.update(choices=x),
+        inputs=[directories_state],
+        outputs=[move_to_collection],
+    )
+
+
+def create_collection_ui(directories_state):
+    new_collection_name = gr.Textbox(label="New collection name", value="")
+
+    def create_collection(new_collection_name):
+        os.makedirs(os.path.join("collections", new_collection_name))
+        return [
+            get_collections(),
+            gr.Button.update(value="Created"),
+        ]
+
+    create_collection_button = gr.Button(value="Create collection")
+
+    new_collection_name.change(
+        fn=lambda: gr.Button.update(value="Create collection"),
+        outputs=[create_collection_button],
+    )
+    create_collection_button.click(
+        fn=create_collection,
+        inputs=[new_collection_name],
+        outputs=[directories_state, create_collection_button],
+    )
