@@ -1,4 +1,4 @@
-from ..bark.FullGeneration import FullGeneration
+from src.bark.FullGeneration import FullGeneration
 from .CallbackSaveGeneration import CallbackSaveGeneration
 import sys
 import numpy as np
@@ -43,7 +43,7 @@ def ext_callback_save_generation(
         # full_generation: Dict[str, Any],
         audio_array: np.ndarray,
         files: Dict[str, str],
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
 ) -> None:
     for callback in callbacks_save_generation:
         callback(full_generation, audio_array, files, metadata)
@@ -64,5 +64,5 @@ if __name__ == "__main__":
         },
         audio_array=np.array([1, 2, 3]),
         files={"ogg": "sample.ogg"},
-        metadata={"extension": "test"}
+        metadata={"extension": "test"},
     )

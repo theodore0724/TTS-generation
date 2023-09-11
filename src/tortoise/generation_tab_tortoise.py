@@ -7,8 +7,7 @@ import gradio as gr
 
 def generation_tab_tortoise():
     with gr.Tab("Generation (Tortoise)"):
-        prompt = gr.Textbox(label="Prompt", lines=3,
-                            placeholder="Enter text here...")
+        prompt = gr.Textbox(label="Prompt", lines=3, placeholder="Enter text here...")
 
         with gr.Row():
             # with gr.Box():
@@ -18,7 +17,7 @@ def generation_tab_tortoise():
                     choices=["random"] + list(get_voices()),
                     value="random",
                     # show_label=False,
-                    label="Voice"
+                    label="Voice",
                 )
                 # voice.style(container=False)
                 # reload_voices = gr.Button("🔁", elem_classes="btn-sm")

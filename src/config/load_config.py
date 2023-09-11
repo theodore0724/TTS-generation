@@ -10,7 +10,7 @@ default_config = {
         "fine_use_gpu": True,
         "fine_use_small": False,
         "codec_use_gpu": True,
-        "load_models_on_startup": True
+        "load_models_on_startup": True,
     },
     "gradio_interface_options": {
         'inline': False,
@@ -36,7 +36,7 @@ default_config = {
         'quiet': True, 
         'show_api': True, 
         'file_directories': None,
-        '_frontend': True
+        '_frontend': True,
     },
     "load_models_on_startup": True
 }

@@ -8,6 +8,6 @@ def callback_save_generation(
         full_generation: Any,
         audio_array: np.ndarray,
         files: Dict[str, str],
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
 ) -> None:
     pass
