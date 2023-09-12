@@ -85,4 +85,6 @@ print_pretty_options(gradio_interface_options)
 
 
 if __name__ == "__main__":
-    demo.launch(**gradio_interface_options)
+    demo.queue(
+        concurrency_count=gradio_interface_options.get("concurrency_count", 5),
+    ).launch(**gradio_interface_options)
