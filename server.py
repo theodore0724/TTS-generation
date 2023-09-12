@@ -1,4 +1,5 @@
 import os
+from src.musicgen.musicgen_tab import generation_tab_musicgen
 from src.css.css import full_css
 import src.utils.setup_or_recover as setup_or_recover
 import src.utils.dotenv_init as dotenv_init
@@ -56,10 +57,11 @@ gradio_interface_options = config["gradio_interface_options"] if "gradio_interfa
 
 
 with gr.Blocks(css=full_css) as demo:
-    gr.Markdown("# TTS Generation WebUI (Bark & Tortoise)")
+    gr.Markdown("# TTS Generation WebUI (Bark, MusicGen, Tortoise)")
     with gr.Tabs() as tabs:
         register_use_as_history_button = generation_tab_bark(tabs)
         tab_voice_clone_demo()
+        generation_tab_musicgen()
         generation_tab_tortoise()
         history_tab(register_use_as_history_button)
         history_tab(register_use_as_history_button, directory="favorites")
