@@ -1,6 +1,8 @@
 import tempfile
+from src.bark.history_to_hash import history_to_hash
 from src.bark.npz_tools import save_npz
 from src.bark.FullGeneration import FullGeneration
+from src.utils.date import get_date_string
 from models.bark_voice_cloning_hubert_quantizer.hubert.hubert_manager import (
     HuBERTManager,
 )
@@ -14,7 +16,7 @@ import torchaudio
 import torch
 from encodec.utils import convert_audio
 from bark.generation import load_codec_model
-from encodec import EncodecModel
+from encodec.model import EncodecModel
 
 import gradio as gr
 import numpy as np
@@ -30,10 +32,6 @@ def _load_hubert_model():
     return hubert_model
 
 
-def get_semantic_vectors(path_to_wav: str):
-    hubert_model = _load_hubert_model()
-    return _get_semantic_vectors(hubert_model, path_to_wav)
-
 
 def _get_semantic_vectors(hubert_model: CustomHubert, path_to_wav: str):
     # This is where you load your wav, with soundfile or torchaudio for example
@@ -43,6 +41,12 @@ def _get_semantic_vectors(hubert_model: CustomHubert, path_to_wav: str):
         wav = wav.mean(0, keepdim=True)
 
     return hubert_model.forward(wav, input_sample_hz=sr)
+
+
+
+def get_semantic_vectors(path_to_wav: str):
+    hubert_model = _load_hubert_model()
+    return _get_semantic_vectors(hubert_model, path_to_wav)
 
 
 tokenizer = None
@@ -109,41 +113,62 @@ def save_cloned_voice(
 ):
     voice_name = f"test_clone_voice{str(np.random.randint(100000))}"
     filename = f"voices/{voice_name}.npz"
-    save_npz(filename, full_generation)
+    date = get_date_string()
+    metadata = generate_cloned_voice_metadata(full_generation, date)
+    save_npz(filename, full_generation, metadata)
     return filename
 
 
-def tab_voice_clone_demo():
-    with gr.Tab("Bark Voice Clone Demo"):
+def generate_cloned_voice_metadata(full_generation, date):
+    return {
+        "_version": "0.0.1",
+        "_hash_version": "0.0.2",
+        "_type": "bark",
+        "hash": history_to_hash(full_generation),
+        "date": date,
+    }
+
+
+def tab_voice_clone(register_use_as_history_button):
+    with gr.Tab("Bark Voice Clone"):
         gr.Markdown("""
         Unethical use of this technology is prohibited.
         This demo is based on https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer repository.
         """)
 
-        # TODO: try with ffmpeg (except mp3)
-        # file_input = gr.Audio(label="Input Audio", type="numpy", source="upload", interactive=True)
-        file_input = gr.File(label="Input Audio", file_types=[
-                             ".wav"], interactive=True)
+        file_input = gr.Audio(
+            label="Input Audio",
+            type="filepath",
+            source="upload",
+            interactive=True,
+        )
 
         use_gpu_checkbox = gr.Checkbox(label="Use GPU", value=True)
 
         generate_voice_button = gr.Button(
             value="Generate Voice", variant="primary")
 
-        def generate_voice(wav_file_obj: tempfile._TemporaryFileWrapper, use_gpu: bool):
-            if wav_file_obj is None:
-                print("No file selected")
-                return
-            wav_file = wav_file_obj.name
+        def generate_voice(wav_file: str, use_gpu: bool):
             full_generation = get_prompts(wav_file, use_gpu)
             filename = save_cloned_voice(full_generation)
-            return f"Saved: {filename}"
+            return filename
 
-        output = gr.Label("Output will appear here after input")
+        gr.Markdown("Generated voice:")
+        voice_file_name = gr.Textbox(
+            label="Voice file name", value="", interactive=False
+        )
+
+        use_as_history_button = gr.Button(value="Use as history", variant="secondary")
 
         generate_voice_button.click(
             fn=generate_voice,
             inputs=[file_input, use_gpu_checkbox],
-            outputs=output,
+            outputs=voice_file_name,
             preprocess=True,
+        )
+
+        
+        register_use_as_history_button(
+            use_as_history_button,
+            voice_file_name,
         )
