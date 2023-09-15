@@ -16,7 +16,7 @@ from src.model_manager import model_manager
 from src.bark.settings_tab_bark import settings_tab_bark
 from src.config.config import config
 from src.history_tab.voices_tab import voices_tab
-from src.vocos.vocos_tab_bark import vocos_tab_bark
+from src.vocos.vocos_tabs import vocos_tabs
 
 setup_or_recover.dummy()
 dotenv_init.init()
@@ -68,7 +68,7 @@ with gr.Blocks(css=full_css) as demo:
             print("Failed to load voice clone demo")
             print(e)
         generation_tab_musicgen()
-        vocos_tab_bark()
+        vocos_tabs()
         generation_tab_tortoise()
         history_tab(register_use_as_history_button)
         history_tab(register_use_as_history_button, directory="favorites")
