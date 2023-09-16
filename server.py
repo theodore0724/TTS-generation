@@ -56,7 +56,10 @@ gradio_interface_options = config["gradio_interface_options"] if "gradio_interfa
 
 
 
-with gr.Blocks(css=full_css) as demo:
+with gr.Blocks(
+    css=full_css,
+    title="TTS Generation WebUI",
+) as demo:
     gr.Markdown("# TTS Generation WebUI (Bark, MusicGen, Tortoise)")
     with gr.Tabs() as tabs:
         register_use_as_history_button = generation_tab_bark(tabs)
