@@ -13,7 +13,7 @@ def save_config_bark(text_use_gpu: bool,
                      load_models_on_startup=False
                      ):
     global config
-    # use a single dictionary assignment
+    
     config["model"] = {
         "text_use_gpu": text_use_gpu,
         "text_use_small": text_use_small,
