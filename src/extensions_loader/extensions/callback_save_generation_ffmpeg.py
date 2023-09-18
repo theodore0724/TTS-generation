@@ -9,6 +9,12 @@ import ffmpeg
 
 import base64
 
+def check_ffmpeg():
+    if not hasattr(ffmpeg, "input"):
+        raise ImportError(
+            """Incorrect ffmpeg version. Please install ffmpeg-python with `pip install ffmpeg-python`"""
+        )
+
 
 def ndarray_to_base64(arr):
     # Convert ndarray to bytes
