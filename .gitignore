@@ -10,6 +10,8 @@ outputs/
 favorites/
 voices/
 collections/
+outputs-rvc/
+voices-tortoise/
 
 # Ignore model checkpoints
 data/
