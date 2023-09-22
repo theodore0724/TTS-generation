@@ -5,11 +5,7 @@ from src.history_tab.get_wav_files import get_npz_files_voices
 from src.history_tab.main import _get_filename, _get_row_index
 from src.history_tab.open_folder import open_folder
 import json
-
-
 import gradio as gr
-
-
 import os
 import shutil
 
@@ -53,6 +49,13 @@ def voices_tab(register_use_as_history_button, directory="voices"):
 
             metadata = gr.JSON(label="Metadata")
             metadata_input = edit_metadata_ui(voice_file_name, metadata)
+            photo = gr.Image(label="Photo", type="pil", interactive=True)
+
+    photo.upload(
+        fn=save_photo,
+        inputs=[photo, voice_file_name],
+        outputs=[photo],
+    )
 
     def delete_voice(voice_file_name):
         os.remove(voice_file_name)
@@ -86,6 +89,9 @@ def voices_tab(register_use_as_history_button, directory="voices"):
     def select(_list_data, evt: gr.SelectData):
         filename_npz = _get_filename(_list_data, _get_row_index(evt))
         full_generation = load_npz(filename_npz)
+        resolved_photo = filename_npz.replace(".npz", ".png")
+        if not os.path.exists(resolved_photo):
+            resolved_photo = None
         return {
             voice_file_name: gr.Textbox.update(value=filename_npz),
             new_voice_file_name: gr.Textbox.update(value=filename_npz),
@@ -96,6 +102,7 @@ def voices_tab(register_use_as_history_button, directory="voices"):
             metadata_input: gr.Textbox.update(
                 value=json.dumps(full_generation.get("metadata", {}), indent=2)
             ),
+            photo: gr.Image.update(value=resolved_photo),
         }
 
     outputs = [
@@ -106,6 +113,7 @@ def voices_tab(register_use_as_history_button, directory="voices"):
         audio,
         metadata,
         metadata_input,
+        photo,
     ]
 
     voices_list.select(
